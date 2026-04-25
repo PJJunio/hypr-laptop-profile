@@ -1,0 +1,347 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/notebook-profile"
+STATE_FILE="$STATE_DIR/last-state"
+WARN_FILE="$STATE_DIR/missing-powerprofilesctl.warned"
+WORKFLOW_FILE="$HOME/.config/hypr/workflows.conf"
+INTERNAL_DISPLAY="${NOTEBOOK_PROFILE_INTERNAL_DISPLAY:-eDP-1}"
+BATTERY_BRIGHTNESS="${NOTEBOOK_PROFILE_BATTERY_BRIGHTNESS:-70}"
+AC_BRIGHTNESS="${NOTEBOOK_PROFILE_AC_BRIGHTNESS:-100}"
+BATTERY_DISPLAY_MODE="${NOTEBOOK_PROFILE_BATTERY_DISPLAY_MODE:-1920x1080@60}"
+AC_DISPLAY_MODE="${NOTEBOOK_PROFILE_AC_DISPLAY_MODE:-1920x1080@144}"
+
+mkdir -p "$STATE_DIR"
+
+have_cmd() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+usage() {
+  cat <<'EOF'
+uso: notebook-profile [auto|daemon|status|show-status|ac|ac-external|battery|help]
+
+comandos:
+  auto         detecta o contexto atual e aplica o perfil correspondente
+  daemon       executa continuamente, reavaliando o estado a cada 5 segundos
+  status       imprime o estado atual em texto
+  show-status  envia notificacao desktop e imprime o estado atual
+  ac           aplica o perfil de tomada sem monitor externo
+  ac-external  aplica o perfil de tomada com monitor externo
+  battery      aplica o perfil de bateria
+  help         mostra esta ajuda
+EOF
+}
+
+notify() {
+  local title="$1"
+  local body="$2"
+
+  if have_cmd notify-send; then
+    notify-send "$title" "$body"
+  fi
+}
+
+warn_missing_powerprofilesctl() {
+  [[ -f "$WARN_FILE" ]] && return 0
+  printf '1\n' > "$WARN_FILE"
+  notify "Notebook profile" "powerprofilesctl nao encontrado; instale power-profiles-daemon."
+}
+
+has_ac() {
+  local paths=()
+  shopt -s nullglob
+  paths=(/sys/class/power_supply/AC*/online /sys/class/power_supply/ADP*/online /sys/class/power_supply/ACAD/online)
+  shopt -u nullglob
+
+  local path
+  for path in "${paths[@]}"; do
+    [[ -f "$path" ]] || continue
+    [[ "$(<"$path")" == "1" ]] && return 0
+  done
+
+  return 1
+}
+
+external_monitor_name() {
+  have_cmd hyprctl || return 0
+  have_cmd jq || return 0
+
+  local monitors_json=""
+  monitors_json="$(hyprctl monitors -j 2>/dev/null || true)"
+  [[ -n "$monitors_json" ]] || return 0
+  jq -e . >/dev/null 2>&1 <<<"$monitors_json" || return 0
+
+  jq -r '
+    .[]
+    | select(.name | test("^(eDP|LVDS|DSI)"; "i") | not)
+    | .name
+  ' <<<"$monitors_json" | head -n1
+}
+
+set_power_profile() {
+  local target="$1"
+
+  if ! have_cmd powerprofilesctl; then
+    warn_missing_powerprofilesctl
+    return 0
+  fi
+
+  local current=""
+  current="$(powerprofilesctl get 2>/dev/null || true)"
+  [[ "$current" == "$target" ]] && return 0
+
+  powerprofilesctl set "$target"
+}
+
+set_brightness() {
+  local target="$1"
+
+  have_cmd brightnessctl || return 0
+
+  local current=""
+  current="$(brightnessctl get 2>/dev/null || true)"
+  [[ -n "$current" ]] || return 0
+
+  local max=""
+  max="$(brightnessctl max 2>/dev/null || true)"
+  [[ -n "$max" ]] || return 0
+
+  local desired=$(( max * target / 100 ))
+  [[ "$desired" -lt 1 ]] && desired=1
+  [[ "$current" == "$desired" ]] && return 0
+
+  brightnessctl set "${target}%" >/dev/null 2>&1 || true
+}
+
+current_monitor_geometry() {
+  have_cmd hyprctl || return 0
+  have_cmd jq || return 0
+
+  local monitors_json=""
+  monitors_json="$(hyprctl monitors -j 2>/dev/null || true)"
+  [[ -n "$monitors_json" ]] || return 0
+  jq -e . >/dev/null 2>&1 <<<"$monitors_json" || return 0
+
+  jq -r --arg name "$INTERNAL_DISPLAY" '
+    .[]
+    | select(.name == $name)
+    | "\(.x)x\(.y),\(.scale)"
+  ' <<<"$monitors_json" | head -n1
+}
+
+set_internal_display_mode() {
+  local mode="$1"
+  local geometry=""
+
+  have_cmd hyprctl || return 0
+  geometry="$(current_monitor_geometry)"
+  [[ -n "$geometry" ]] || return 0
+
+  hyprctl keyword monitor "${INTERNAL_DISPLAY},${mode},${geometry}" >/dev/null 2>&1 || true
+}
+
+write_workflow_file() {
+  local workflow="$1"
+  local description="$2"
+  local path="./workflows/${workflow}.conf"
+
+  cat > "$WORKFLOW_FILE" <<EOF
+#! █░█░█ █▀█ █▀█ █▄▀ █▀▀ █░░ █▀█ █░█░█ █▀
+#! ▀▄▀▄▀ █▄█ █▀▄ █░█ █▀░ █▄▄ █▄█ ▀▄▀▄▀ ▄█
+
+# This file sets the current workflow for Hyprland
+# HyDE Controlled content // DO NOT EDIT
+# Edit or add workflows in the ./workflows/ directory
+# and run the 'workflows.sh select' command to update this file
+
+#  Workflows are a set of configurations that can be applied to Hyprland
+#   that suits the actual workflow you are doing.
+# It can be gaming mode, work mode, or anything else you can think of.
+# you can also exec a command within the workflow
+
+\$WORKFLOW = ${workflow}
+\$WORKFLOW_ICON = ${workflow}
+\$WORKFLOW_DESCRIPTION = ${description}
+\$WORKFLOWS_PATH = ${path}
+source = \$WORKFLOWS_PATH
+EOF
+}
+
+set_hypr_workflow() {
+  local workflow="$1"
+  local description="$2"
+  local current=""
+
+  if [[ -f "$WORKFLOW_FILE" ]]; then
+    current="$(awk -F'= ' '/^\$WORKFLOW = / {print $2; exit}' "$WORKFLOW_FILE" 2>/dev/null || true)"
+  fi
+
+  [[ "$current" == "$workflow" ]] && return 0
+  write_workflow_file "$workflow" "$description"
+
+  if have_cmd hyprctl; then
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+}
+
+state_signature() {
+  local profile="$1"
+  local power="$2"
+  local workflow="$3"
+  local monitor="$4"
+
+  printf '%s|%s|%s|%s\n' "$profile" "$power" "$workflow" "$monitor"
+}
+
+apply_profile() {
+  local profile="$1"
+  local source="${2:-manual}"
+  local power workflow description monitor brightness display_mode last new_state
+
+  monitor="$(external_monitor_name)"
+
+  case "$profile" in
+    ac)
+      power="performance"
+      workflow="default"
+      description="Tomada sem monitor externo"
+      brightness="$AC_BRIGHTNESS"
+      display_mode="$AC_DISPLAY_MODE"
+      ;;
+    ac-external)
+      power="performance"
+      workflow="default"
+      description="Tomada com monitor externo"
+      brightness="$AC_BRIGHTNESS"
+      display_mode="$AC_DISPLAY_MODE"
+      ;;
+    battery)
+      power="power-saver"
+      workflow="powersaver"
+      description="Bateria"
+      brightness="$BATTERY_BRIGHTNESS"
+      display_mode="$BATTERY_DISPLAY_MODE"
+      ;;
+    *)
+      echo "perfil invalido: $profile" >&2
+      exit 1
+      ;;
+  esac
+
+  set_power_profile "$power"
+  set_hypr_workflow "$workflow" "$description"
+  set_brightness "$brightness"
+  set_internal_display_mode "$display_mode"
+
+  last="$(cat "$STATE_FILE" 2>/dev/null || true)"
+  new_state="$(state_signature "$profile" "$power" "$workflow" "$monitor")"
+
+  [[ "$last" == "$new_state" ]] && return 0
+
+  printf '%s' "$new_state" > "$STATE_FILE"
+
+  if [[ -n "$monitor" ]]; then
+    notify "Notebook profile: $profile" "energia: $power\nworkflow: $workflow\nmonitor: $monitor\norigem: $source"
+  else
+    notify "Notebook profile: $profile" "energia: $power\nworkflow: $workflow\norigem: $source"
+  fi
+}
+
+detect_profile() {
+  local monitor=""
+
+  if has_ac; then
+    monitor="$(external_monitor_name)"
+    if [[ -n "$monitor" ]]; then
+      printf 'ac-external\n'
+    else
+      printf 'ac\n'
+    fi
+  else
+    printf 'battery\n'
+  fi
+}
+
+print_status() {
+  local ac_state="off"
+  local monitor=""
+  local detected=""
+  local power="unavailable"
+  local workflow="unknown"
+  local brightness_target=""
+  local display_mode=""
+
+  has_ac && ac_state="on"
+  monitor="$(external_monitor_name)"
+  detected="$(detect_profile)"
+
+  if have_cmd powerprofilesctl; then
+    power="$(powerprofilesctl get 2>/dev/null || printf 'unknown')"
+  fi
+
+  if [[ -f "$WORKFLOW_FILE" ]]; then
+    workflow="$(awk -F'= ' '/^\$WORKFLOW = / {print $2; exit}' "$WORKFLOW_FILE" 2>/dev/null || printf 'unknown')"
+  fi
+
+  case "$detected" in
+    battery)
+      brightness_target="${BATTERY_BRIGHTNESS}%"
+      display_mode="$BATTERY_DISPLAY_MODE"
+      ;;
+    ac|ac-external)
+      brightness_target="${AC_BRIGHTNESS}%"
+      display_mode="$AC_DISPLAY_MODE"
+      ;;
+  esac
+
+  printf 'detected_profile=%s\n' "$detected"
+  printf 'ac=%s\n' "$ac_state"
+  printf 'external_monitor=%s\n' "${monitor:-none}"
+  printf 'power_profile=%s\n' "$power"
+  printf 'hypr_workflow=%s\n' "$workflow"
+  printf 'brightness_target=%s\n' "${brightness_target:-unknown}"
+  printf 'internal_display=%s\n' "$INTERNAL_DISPLAY"
+  printf 'internal_display_mode=%s\n' "${display_mode:-unknown}"
+}
+
+show_status() {
+  local details=""
+  details="$(print_status)"
+  notify "Notebook profile status" "$details"
+  printf '%s\n' "$details"
+}
+
+run_daemon() {
+  trap 'exit 0' INT TERM
+
+  while true; do
+    apply_profile "$(detect_profile)" "daemon"
+    sleep 5
+  done
+}
+
+case "${1:-auto}" in
+  auto)
+    apply_profile "$(detect_profile)" "auto"
+    ;;
+  daemon)
+    run_daemon
+    ;;
+  status)
+    print_status
+    ;;
+  show-status)
+    show_status
+    ;;
+  ac|ac-external|battery)
+    apply_profile "$1" "manual"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
