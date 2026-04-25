@@ -30,6 +30,7 @@ O projeto foi extraido de uma instalacao local e reorganizado como um repositór
 ## Estrutura
 
 - `bin/notebook-profile`: script principal
+- `install.sh`: instalador interativo e configuravel
 - `examples/hypr-userprefs.conf.snippet`: exemplo de `exec-once`
 - `examples/hypr-keybindings.conf.snippet`: atalhos manuais
 - `docs/INSTALLATION.md`: instalacao e integracao
@@ -58,17 +59,63 @@ Sem `powerprofilesctl`, o script continua funcionando e apenas deixa de aplicar 
 ```bash
 git clone <repo-url> notebook-profile
 cd notebook-profile
-make install
+./install.sh
 ```
 
-Sem `make`:
+O instalador pode perguntar, por exemplo:
 
 ```bash
-mkdir -p ~/.local/bin
-install -m 755 bin/notebook-profile ~/.local/bin/notebook-profile
+detectei a tela interna automaticamente: eDP-1
+usar eDP-1 como tela interna?
+qual a resolucao desejada na tomada?
+qual a frequencia desejada na tomada?
+qual a resolucao desejada na bateria?
+qual a frequencia desejada na bateria?
+qual brilho na tomada?
+qual brilho na bateria?
 ```
 
-Depois garanta que `~/.local/bin` esteja no `PATH`.
+Ele tambem:
+
+- tenta detectar automaticamente a tela interna e pede confirmacao
+- se nao detectar, mostra como descobrir via `hyprctl`
+- valida se a resolucao e a frequencia informadas existem para a tela detectada
+- valida brilho, resolucao, frequencia e erros comuns de ambiente antes de instalar
+- verifica dependencias
+- tenta instalar o que estiver faltando com `pacman`, `apt`, `dnf` ou `zypper`
+- instala o binario em `~/.local/bin`
+- grava a configuracao persistente em `~/.config/notebook-profile/config.env`
+- detecta instalacoes existentes e pergunta antes de sobrescrever arquivos gerados
+- cria backup com timestamp antes de substituir `config.env` e o snippet do Hyprland
+- com `--yes`, mantem arquivos existentes quando a resposta padrao for nao
+- com `--force`, sobrescreve arquivos gerados sem perguntar e ainda cria backup
+- pode criar um snippet de integracao para o Hyprland
+
+Modo nao interativo:
+
+```bash
+./install.sh \
+  --internal-display eDP-1 \
+  --ac-resolution 1920x1080 \
+  --ac-refresh 144 \
+  --battery-resolution 1920x1080 \
+  --battery-refresh 60 \
+  --ac-brightness 100 \
+  --battery-brightness 70 \
+  --yes
+```
+
+Sobrescrita automatica de arquivos gerados:
+
+```bash
+./install.sh --yes --force ...
+```
+
+Instalacao manual, sem bootstrap:
+
+```bash
+make install
+```
 
 ## Uso
 
@@ -110,6 +157,12 @@ export NOTEBOOK_PROFILE_BATTERY_BRIGHTNESS="70"
 export NOTEBOOK_PROFILE_AC_BRIGHTNESS="100"
 export NOTEBOOK_PROFILE_BATTERY_DISPLAY_MODE="1920x1080@60"
 export NOTEBOOK_PROFILE_AC_DISPLAY_MODE="1920x1080@144"
+```
+
+Ou deixar o `install.sh` gerar automaticamente:
+
+```bash
+~/.config/notebook-profile/config.env
 ```
 
 Para mais detalhes, veja `docs/CONFIGURATION.md`.

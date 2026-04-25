@@ -22,12 +22,68 @@ sudo pacman -S jq brightnessctl libnotify power-profiles-daemon
 ```bash
 git clone <repo-url> notebook-profile
 cd notebook-profile
+./install.sh
+```
+
+O `install.sh`:
+
+- tenta detectar automaticamente a tela interna e pede confirmacao
+- se nao detectar, instrui como descobrir manualmente com `hyprctl`
+- pergunta a resolucao e a frequencia desejadas na tomada e na bateria
+- valida a combinacao escolhida contra os modos reportados pelo `hyprctl`, quando disponivel
+- valida entradas invalidas, falta de permissoes e ferramentas basicas de instalacao
+- pergunta os niveis de brilho
+- verifica dependencias e tenta instalar as ausentes
+- instala o script em `~/.local/bin/notebook-profile`
+- grava a configuracao em `~/.config/notebook-profile/config.env`
+- detecta instalacao existente e pede confirmacao antes de sobrescrever arquivos gerados
+- cria backup com timestamp de `config.env` e do snippet do Hyprland antes da substituicao
+- com `--yes`, preserva arquivos existentes quando a resposta padrao for nao
+- com `--force`, sobrescreve arquivos gerados sem perguntar e ainda cria backup
+- opcionalmente cria um snippet do Hyprland em `~/.config/hypr/conf.d/notebook-profile.conf`
+
+## Flags uteis
+
+```bash
+./install.sh --help
+```
+
+Exemplo nao interativo:
+
+```bash
+./install.sh \
+  --internal-display eDP-1 \
+  --ac-resolution 1920x1080 \
+  --ac-refresh 144 \
+  --battery-resolution 1920x1080 \
+  --battery-refresh 60 \
+  --ac-brightness 100 \
+  --battery-brightness 70 \
+  --yes
+```
+
+Exemplo nao interativo com sobrescrita forcada:
+
+```bash
+./install.sh \
+  --internal-display eDP-1 \
+  --ac-resolution 1920x1080 \
+  --ac-refresh 144 \
+  --battery-resolution 1920x1080 \
+  --battery-refresh 60 \
+  --ac-brightness 100 \
+  --battery-brightness 70 \
+  --yes \
+  --force
+```
+
+## Instalacao manual
+
+```bash
 make install
 ```
 
-O `Makefile` instala o script em `~/.local/bin/notebook-profile`.
-
-## Instalacao manual
+ou:
 
 ```bash
 mkdir -p ~/.local/bin
