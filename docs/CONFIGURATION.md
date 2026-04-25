@@ -2,7 +2,7 @@
 
 ## Variaveis suportadas
 
-### `NOTEBOOK_PROFILE_INTERNAL_DISPLAY`
+### `LAPTOP_PROFILE_INTERNAL_DISPLAY`
 
 Nome do display interno no Hyprland.
 
@@ -12,7 +12,7 @@ Padrao:
 eDP-1
 ```
 
-### `NOTEBOOK_PROFILE_BATTERY_BRIGHTNESS`
+### `LAPTOP_PROFILE_BATTERY_BRIGHTNESS`
 
 Brilho em percentual quando estiver na bateria.
 
@@ -22,7 +22,7 @@ Padrao:
 70
 ```
 
-### `NOTEBOOK_PROFILE_AC_BRIGHTNESS`
+### `LAPTOP_PROFILE_AC_BRIGHTNESS`
 
 Brilho em percentual quando estiver na tomada.
 
@@ -32,7 +32,7 @@ Padrao:
 100
 ```
 
-### `NOTEBOOK_PROFILE_BATTERY_DISPLAY_MODE`
+### `LAPTOP_PROFILE_BATTERY_DISPLAY_MODE`
 
 Modo da tela interna quando estiver na bateria.
 
@@ -42,7 +42,7 @@ Padrao:
 1920x1080@60
 ```
 
-### `NOTEBOOK_PROFILE_AC_DISPLAY_MODE`
+### `LAPTOP_PROFILE_AC_DISPLAY_MODE`
 
 Modo da tela interna quando estiver na tomada.
 
@@ -55,11 +55,11 @@ Padrao:
 ## Exemplo de override
 
 ```bash
-export NOTEBOOK_PROFILE_INTERNAL_DISPLAY="eDP-1"
-export NOTEBOOK_PROFILE_BATTERY_BRIGHTNESS="55"
-export NOTEBOOK_PROFILE_AC_BRIGHTNESS="90"
-export NOTEBOOK_PROFILE_BATTERY_DISPLAY_MODE="1920x1080@60"
-export NOTEBOOK_PROFILE_AC_DISPLAY_MODE="2560x1600@120"
+export LAPTOP_PROFILE_INTERNAL_DISPLAY="eDP-1"
+export LAPTOP_PROFILE_BATTERY_BRIGHTNESS="55"
+export LAPTOP_PROFILE_AC_BRIGHTNESS="90"
+export LAPTOP_PROFILE_BATTERY_DISPLAY_MODE="1920x1080@60"
+export LAPTOP_PROFILE_AC_DISPLAY_MODE="2560x1600@120"
 ```
 
 Voce pode colocar esses exports em `~/.zshrc`, `~/.bashrc` ou no mesmo arquivo que sobe sua sessao do Hyprland.
@@ -70,28 +70,28 @@ Voce pode colocar esses exports em `~/.zshrc`, `~/.bashrc` ou no mesmo arquivo q
 
 - perfil de energia: `power-saver`
 - workflow Hyprland: `powersaver`
-- brilho: `NOTEBOOK_PROFILE_BATTERY_BRIGHTNESS`
-- modo da tela: `NOTEBOOK_PROFILE_BATTERY_DISPLAY_MODE`
+- brilho: `LAPTOP_PROFILE_BATTERY_BRIGHTNESS`
+- modo da tela: `LAPTOP_PROFILE_BATTERY_DISPLAY_MODE`
 
 ### `ac`
 
 - perfil de energia: `performance`
 - workflow Hyprland: `default`
-- brilho: `NOTEBOOK_PROFILE_AC_BRIGHTNESS`
-- modo da tela: `NOTEBOOK_PROFILE_AC_DISPLAY_MODE`
+- brilho: `LAPTOP_PROFILE_AC_BRIGHTNESS`
+- modo da tela: `LAPTOP_PROFILE_AC_DISPLAY_MODE`
 
 ### `ac-external`
 
 - perfil de energia: `performance`
 - workflow Hyprland: `default`
-- brilho: `NOTEBOOK_PROFILE_AC_BRIGHTNESS`
-- modo da tela: `NOTEBOOK_PROFILE_AC_DISPLAY_MODE`
+- brilho: `LAPTOP_PROFILE_AC_BRIGHTNESS`
+- modo da tela: `LAPTOP_PROFILE_AC_DISPLAY_MODE`
 
 ## Arquivos de estado
 
 O projeto escreve em:
 
-- `~/.local/state/notebook-profile/last-state`
-- `~/.local/state/notebook-profile/missing-powerprofilesctl.warned`
+- `~/.local/state/hypr-laptop-profile/last-state`
+- `~/.local/state/hypr-laptop-profile/missing-powerprofilesctl.warned`
 
 Esses arquivos evitam reexecucoes desnecessarias e notificacoes repetidas.

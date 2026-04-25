@@ -2,6 +2,7 @@
 
 ## Requisitos
 
+- sessao Hyprland ou HyDE ativa
 - `bash`
 - `jq`
 - `hyprctl`
@@ -17,11 +18,13 @@ sudo pacman -S jq brightnessctl libnotify power-profiles-daemon
 
 `hyprctl` normalmente ja vem com a instalacao do Hyprland.
 
+Sem Hyprland/HyDE ativo, a instalacao e bloqueada. Suporte a outros ambientes pode ser implementado futuramente.
+
 ## Instalacao local
 
 ```bash
-git clone <repo-url> notebook-profile
-cd notebook-profile
+git clone <repo-url> hypr-laptop-profile
+cd hypr-laptop-profile
 ./install.sh
 ```
 
@@ -34,13 +37,13 @@ O `install.sh`:
 - valida entradas invalidas, falta de permissoes e ferramentas basicas de instalacao
 - pergunta os niveis de brilho
 - verifica dependencias e tenta instalar as ausentes
-- instala o script em `~/.local/bin/notebook-profile`
-- grava a configuracao em `~/.config/notebook-profile/config.env`
+- instala o script em `~/.local/bin/laptop-profile`
+- grava a configuracao em `~/.config/hypr-laptop-profile/config.env`
 - detecta instalacao existente e pede confirmacao antes de sobrescrever arquivos gerados
 - cria backup com timestamp de `config.env` e do snippet do Hyprland antes da substituicao
 - com `--yes`, preserva arquivos existentes quando a resposta padrao for nao
 - com `--force`, sobrescreve arquivos gerados sem perguntar e ainda cria backup
-- opcionalmente cria um snippet do Hyprland em `~/.config/hypr/conf.d/notebook-profile.conf`
+- opcionalmente cria um snippet do Hyprland em `~/.config/hypr/conf.d/laptop-profile.conf`
 
 ## Flags uteis
 
@@ -87,14 +90,14 @@ ou:
 
 ```bash
 mkdir -p ~/.local/bin
-install -m 755 bin/notebook-profile ~/.local/bin/notebook-profile
+install -m 755 bin/laptop-profile ~/.local/bin/laptop-profile
 ```
 
 Confirme que `~/.local/bin` esta no `PATH`:
 
 ```bash
 echo "$PATH"
-command -v notebook-profile
+command -v laptop-profile
 ```
 
 ## Integracao com Hyprland
@@ -102,7 +105,7 @@ command -v notebook-profile
 Adicione ao seu arquivo de inicializacao:
 
 ```ini
-exec-once = $HOME/.local/bin/notebook-profile daemon
+exec-once = $HOME/.local/bin/laptop-profile daemon
 ```
 
 Se voce usa uma configuracao no estilo HyDE, pode aproveitar os snippets em `examples/`.
@@ -112,8 +115,8 @@ Se voce usa uma configuracao no estilo HyDE, pode aproveitar os snippets em `exa
 Rode:
 
 ```bash
-notebook-profile status
-notebook-profile auto
+laptop-profile status
+laptop-profile auto
 ```
 
 Se tudo estiver correto, o script deve detectar energia, monitor externo e imprimir o perfil calculado.

@@ -13,12 +13,11 @@ systemctl status power-profiles-daemon
 
 ## `hyprctl nao encontrado`
 
-Sem `hyprctl`, o instalador nao consegue:
+Sem `hyprctl`, a instalacao e bloqueada.
 
-- detectar a tela interna automaticamente
-- validar resolucao e frequencia contra os modos do monitor
+Instale o Hyprland ou rode a instalacao em um ambiente Hyprland/HyDE suportado.
 
-Instale o Hyprland ou rode a instalacao em um ambiente onde `hyprctl` exista.
+Suporte a outros ambientes pode ser implementado futuramente.
 
 ## `hyprctl` existe, mas nao consegue listar monitores
 
@@ -31,7 +30,9 @@ hyprctl monitors
 hyprctl monitors -j
 ```
 
-Se falhar, o instalador vai continuar em modo manual, mas sem validacao automatica de modos.
+Se falhar, a instalacao sera bloqueada.
+
+Suporte a outros ambientes pode ser implementado futuramente.
 
 ## Erro de valor invalido para brilho, resolucao ou frequencia
 
@@ -61,28 +62,28 @@ Exemplo valido:
 O instalador precisa conseguir escrever em:
 
 - `~/.local/bin`
-- `~/.config/notebook-profile`
+- `~/.config/hypr-laptop-profile`
 
 Verifique:
 
 ```bash
-mkdir -p ~/.local/bin ~/.config/notebook-profile
+mkdir -p ~/.local/bin ~/.config/hypr-laptop-profile
 test -w ~/.local/bin && echo ok
-test -w ~/.config/notebook-profile && echo ok
+test -w ~/.config/hypr-laptop-profile && echo ok
 ```
 
 ## Reinstalacao sobrescreveu minha configuracao
 
 O instalador agora cria backup com timestamp antes de substituir:
 
-- `~/.config/notebook-profile/config.env`
-- `~/.config/hypr/conf.d/notebook-profile.conf`
+- `~/.config/hypr-laptop-profile/config.env`
+- `~/.config/hypr/conf.d/laptop-profile.conf`
 
 Procure arquivos com sufixo `.bak`, por exemplo:
 
 ```bash
-ls -1 ~/.config/notebook-profile/config.env.*.bak
-ls -1 ~/.config/hypr/conf.d/notebook-profile.conf.*.bak
+ls -1 ~/.config/hypr-laptop-profile/config.env.*.bak
+ls -1 ~/.config/hypr/conf.d/laptop-profile.conf.*.bak
 ```
 
 Se quiser sobrescrever sem perguntas em automacao:
@@ -103,7 +104,7 @@ hyprctl monitors -j | jq .
 Se necessario, ajuste:
 
 ```bash
-export NOTEBOOK_PROFILE_INTERNAL_DISPLAY="nome-correto"
+export LAPTOP_PROFILE_INTERNAL_DISPLAY="nome-correto"
 ```
 
 ## O script nao detecta monitor externo
@@ -131,15 +132,15 @@ Se isso falhar, o problema nao esta no script e sim em permissao ou integracao c
 ## Quais comandos sao seguros para teste
 
 ```bash
-notebook-profile status
-notebook-profile show-status
-notebook-profile auto
+laptop-profile status
+laptop-profile show-status
+laptop-profile auto
 ```
 
 Para forcar perfis:
 
 ```bash
-notebook-profile battery
-notebook-profile ac
-notebook-profile ac-external
+laptop-profile battery
+laptop-profile ac
+laptop-profile ac-external
 ```

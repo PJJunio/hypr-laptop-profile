@@ -2,10 +2,10 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/notebook-profile"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr-laptop-profile"
 CONFIG_FILE="$CONFIG_DIR/config.env"
 INSTALL_DIR="${HOME}/.local/bin"
-TARGET_BIN="${INSTALL_DIR}/notebook-profile"
+TARGET_BIN="${INSTALL_DIR}/laptop-profile"
 
 INTERNAL_DISPLAY=""
 BATTERY_BRIGHTNESS=""
@@ -125,7 +125,7 @@ confirm() {
 }
 
 check_basic_requirements() {
-  [[ -f "${PROJECT_DIR}/bin/notebook-profile" ]] || die "script principal nao encontrado em ${PROJECT_DIR}/bin/notebook-profile"
+  [[ -f "${PROJECT_DIR}/bin/laptop-profile" ]] || die "script principal nao encontrado em ${PROJECT_DIR}/bin/laptop-profile"
   have_cmd install || die "comando 'install' nao encontrado; instale coreutils"
   mkdir -p "$INSTALL_DIR" || die "nao foi possivel criar ${INSTALL_DIR}"
   mkdir -p "$CONFIG_DIR" || die "nao foi possivel criar ${CONFIG_DIR}"
@@ -134,7 +134,7 @@ check_basic_requirements() {
 }
 
 report_existing_installation() {
-  local hypr_snippet="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/conf.d/notebook-profile.conf"
+  local hypr_snippet="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/conf.d/laptop-profile.conf"
   local found=0
 
   if [[ -f "$TARGET_BIN" ]]; then
@@ -164,15 +164,11 @@ has_hyprctl_access() {
 
 warn_if_hyprctl_unavailable() {
   if ! have_cmd hyprctl; then
-    warn "hyprctl nao encontrado"
-    warn "sem hyprctl o instalador nao consegue detectar a tela interna nem validar modos automaticamente"
-    return 0
+    die "hyprctl nao encontrado. Este projeto e compativel apenas com Hyprland/HyDE no momento. Suporte a outros ambientes pode ser implementado futuramente."
   fi
 
   if ! has_hyprctl_access; then
-    warn "hyprctl encontrado, mas nao foi possivel consultar os monitores"
-    warn "isso normalmente acontece fora de uma sessao Hyprland ativa"
-    warn "o instalador seguira em modo manual para nome da tela e validacao de modos"
+    die "hyprctl encontrado, mas nao foi possivel consultar os monitores. Este projeto requer uma sessao Hyprland/HyDE ativa no momento. Suporte a outros ambientes pode ser implementado futuramente."
   fi
 }
 
@@ -490,11 +486,11 @@ write_config_file() {
   fi
 
   cat > "$CONFIG_FILE" <<EOF
-export NOTEBOOK_PROFILE_INTERNAL_DISPLAY="${INTERNAL_DISPLAY}"
-export NOTEBOOK_PROFILE_BATTERY_BRIGHTNESS="${BATTERY_BRIGHTNESS}"
-export NOTEBOOK_PROFILE_AC_BRIGHTNESS="${AC_BRIGHTNESS}"
-export NOTEBOOK_PROFILE_BATTERY_DISPLAY_MODE="${battery_mode}"
-export NOTEBOOK_PROFILE_AC_DISPLAY_MODE="${ac_mode}"
+export LAPTOP_PROFILE_INTERNAL_DISPLAY="${INTERNAL_DISPLAY}"
+export LAPTOP_PROFILE_BATTERY_BRIGHTNESS="${BATTERY_BRIGHTNESS}"
+export LAPTOP_PROFILE_AC_BRIGHTNESS="${AC_BRIGHTNESS}"
+export LAPTOP_PROFILE_BATTERY_DISPLAY_MODE="${battery_mode}"
+export LAPTOP_PROFILE_AC_DISPLAY_MODE="${ac_mode}"
 EOF
 }
 
@@ -503,13 +499,13 @@ install_binary() {
     log "atualizando binario existente em ${TARGET_BIN}"
   fi
   mkdir -p "$INSTALL_DIR"
-  install -m 755 "${PROJECT_DIR}/bin/notebook-profile" "$TARGET_BIN"
+  install -m 755 "${PROJECT_DIR}/bin/laptop-profile" "$TARGET_BIN"
 }
 
 install_hypr_integration() {
   local hypr_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
   local hypr_snippet_dir="${hypr_dir}/conf.d"
-  local hypr_snippet="${hypr_snippet_dir}/notebook-profile.conf"
+  local hypr_snippet="${hypr_snippet_dir}/laptop-profile.conf"
 
   mkdir -p "$hypr_snippet_dir"
 
@@ -526,8 +522,8 @@ install_hypr_integration() {
   fi
 
   cat > "$hypr_snippet" <<EOF
-# notebook-profile auto-generated snippet
-exec-once = \$HOME/.local/bin/notebook-profile daemon
+# laptop-profile auto-generated snippet
+exec-once = \$HOME/.local/bin/laptop-profile daemon
 EOF
 
   log "snippet do Hyprland escrito em ${hypr_snippet}"
@@ -537,10 +533,10 @@ EOF
 
 $ut=Utilities
 $d=[$ut]
-bindd = $mainMod Alt, F7, $d notebook profile battery, exec, notebook-profile battery
-bindd = $mainMod Alt, F8, $d notebook profile ac, exec, notebook-profile ac
-bindd = $mainMod Alt, F9, $d notebook profile ac external, exec, notebook-profile ac-external
-bindd = $mainMod Alt, F10, $d notebook profile status, exec, notebook-profile show-status
+bindd = $mainMod Alt, F7, $d laptop profile battery, exec, laptop-profile battery
+bindd = $mainMod Alt, F8, $d laptop profile ac, exec, laptop-profile ac
+bindd = $mainMod Alt, F9, $d laptop profile ac external, exec, laptop-profile ac-external
+bindd = $mainMod Alt, F10, $d laptop profile status, exec, laptop-profile show-status
 EOF
     log "atalhos opcionais adicionados ao snippet"
   fi
@@ -633,7 +629,8 @@ main() {
 
   default_display="$(detect_current_display)"
   if [[ "$AUTO_YES" == "1" && -z "$INTERNAL_DISPLAY" ]]; then
-    INTERNAL_DISPLAY="${default_display:-eDP-1}"
+    [[ -n "$default_display" ]] || die "nao foi possivel detectar a tela interna automaticamente; use --internal-display no modo --yes"
+    INTERNAL_DISPLAY="$default_display"
   else
     resolve_internal_display "$default_display"
   fi
@@ -669,7 +666,7 @@ main() {
   log "configuracao: ${CONFIG_FILE}"
   [[ "$CONFIG_BACKUP_CREATED" == "1" ]] && log "backup da configuracao foi criado antes da substituicao"
   [[ "$HYPR_BACKUP_CREATED" == "1" ]] && log "backup do snippet do Hyprland foi criado antes da substituicao"
-  log "teste com: notebook-profile status"
+  log "teste com: laptop-profile status"
 }
 
 main "$@"
