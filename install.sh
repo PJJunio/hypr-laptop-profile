@@ -259,7 +259,7 @@ list_display_modes() {
         (.availableModes[]?),
         (.modes[]? | if type == "string" then . else "\(.width)x\(.height)@\(.refreshRate // .refresh // 0 | floor)" end)
       )
-  ' <<<"$monitors_json" 2>/dev/null | awk 'NF' | sort -u
+  ' <<<"$monitors_json" 2>/dev/null | sed 's/\.[0-9]*Hz$//; s/Hz$//' | awk 'NF' | sort -u
 }
 
 mode_resolution() {
@@ -539,6 +539,42 @@ bindd = $mainMod Alt, F9, $d laptop profile ac external, exec, laptop-profile ac
 bindd = $mainMod Alt, F10, $d laptop profile status, exec, laptop-profile show-status
 EOF
     log "atalhos opcionais adicionados ao snippet"
+  fi
+
+  ensure_snippet_sourced "$hypr_snippet"
+}
+
+ensure_snippet_sourced() {
+  local snippet_path="$1"
+  local hypr_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+  local userprefs="${hypr_dir}/userprefs.conf"
+  local source_line="source = ${snippet_path}"
+
+  # Se o hyprland.conf ja inclui conf.d/ diretamente, nao precisa fazer nada
+  if grep -qE '^\s*source\s*=.*conf\.d/' "${hypr_dir}/hyprland.conf" 2>/dev/null; then
+    return 0
+  fi
+
+  # Verificar se ja existe source do snippet em algum arquivo carregado
+  if grep -rqF "$snippet_path" "${hypr_dir}/hyprland.conf" "${userprefs}" 2>/dev/null; then
+    log "snippet ja esta sendo carregado pelo Hyprland"
+    return 0
+  fi
+
+  # HyDE usa userprefs.conf como ponto de customizacao do usuario
+  if [[ -f "$userprefs" ]]; then
+    log "HyDE detectado: conf.d/ nao e carregado automaticamente"
+    if confirm "adicionar source do snippet em ${userprefs}?" "y"; then
+      printf '\n# laptop-profile snippet\n%s\n' "$source_line" >> "$userprefs"
+      log "source adicionado em ${userprefs}"
+    else
+      warn "o snippet em ${snippet_path} nao sera carregado automaticamente"
+      warn "adicione manualmente: ${source_line}"
+    fi
+  else
+    warn "nao foi possivel verificar se conf.d/ e carregado pelo Hyprland"
+    warn "se o daemon nao iniciar, adicione ao seu hyprland.conf:"
+    warn "  ${source_line}"
   fi
 }
 
