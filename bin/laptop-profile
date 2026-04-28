@@ -84,7 +84,6 @@ external_monitor_name() {
     .[]
     | select(.name | test("^(eDP|LVDS|DSI)"; "i") | not)
     | select(.disabled != true)
-    | select(.dpmsStatus != false)
     | .name
   ' <<<"$monitors_json" | head -n1
 }
